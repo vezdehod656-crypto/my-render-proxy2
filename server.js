@@ -3,7 +3,7 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const app = express();
 
-// авторизация (оставляем)
+// авторизация
 const auth = (req, res, next) => {
   const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
   const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
@@ -18,23 +18,22 @@ const auth = (req, res, next) => {
 
 app.use(auth);
 
-// универсальный прокси
-app.use('/', (req, res, next) => {
-  const target = req.query.url;
+// ПРОКСИ
+app.use('/', createProxyMiddleware({
+  changeOrigin: true,
+  secure: false,
 
-  if (!target) {
-    return res.send('Добавь ?url=https://site.com');
+  router: (req) => {
+    const target = req.query.url;
+    if (!target) return 'https://example.com';
+    return target;
+  },
+
+  pathRewrite: (path, req) => {
+    return '/';
   }
+}));
 
-  return createProxyMiddleware({
-    target: target,
-    changeOrigin: true,
-    secure: false,
-    pathRewrite: { '^/': '' }
-  })(req, res, next);
-});
-
-// пинг
 app.get('/ping', (req, res) => res.send('pong'));
 
 const PORT = process.env.PORT || 3000;
